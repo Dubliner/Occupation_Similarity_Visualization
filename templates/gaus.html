@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BD";
+  position: absolute;
+  text-align: center;
+}
+
+
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+</style>
+
+<head>
+<title>Occupations and their neighbors</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  
+</head>
+
+<body>
+    
+
+    <!-- <h1>Occupation Neighbors</h1> -->
+
+    <div class="container">
+      <h1>Occupation Network</h1>
+        <p>Hover on an occupation to show its neighbors. The diameter of current occupation network is {{diameter}}</p>
+      
+      {% if counter<5 %}
+        <form class="form-inline" role="form" action="">
+          <div class="form-group">
+            <label for="text"># neighbors:</label>
+            <input type="text" class="form-control" id="neighbor" placeholder="1~20" value="">
+          </div>
+          <div class="form-group">
+            <label for="text">occupation:</label>
+            <input type="text" class="form-control" id="occ" placeholder="Chief Executives" value="">
+          </div>
+          <div class="form-group">
+            <label for="text">edge threshold:</label>
+            <input type="text" class="form-control" id="thres" placeholder="0.9~1" value="">
+          </div>          
+            <button type="submit" class="btn btn-default">Submit</button>
+        </form>
+      {% else %}
+        <form class="form-inline" role="form" action="">
+          <div class="form-group">
+            <label for="text"># neighbors:</label>
+            <input type="text" name="muy" class="form-control" id="neighbor" placeholder="1~20" value="{{muy}}">
+          </div>
+          <div class="form-group">
+            <label for="text">occupation:</label>
+            <input type="text" name="mux" class="form-control" id="occ" placeholder="Chief Executives" value="{{mux}}">
+          </div>
+          
+          <div class="form-group">
+            <label for="text">edge threshold:</label>
+            <input type="text" name="muz" class="form-control" id="thres" placeholder="0.9~1" value="{{muz}}">
+          </div>          
+            <button type="submit" class="btn btn-default">Submit</button>
+        </form>
+      {% endif %}
+    </div>
+
+    
+
+
+<script>
+    $(document).ready(function() {
+    $('.selectpicker').selectpicker({
+      style: 'btn-info',
+      size: 100
+    });
+    });
+  </script>
+
+  
+
+    
+
+    <div id="plot">
+    </div>
+
+
+<!-- <script src="/lib/d3/d3.v3.min.js"></script> -->
+<!-- <script src="/lib/d3-tip/d3-tip.min.js"></script> -->
+<script src="http://d3js.org/d3.v2.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.7.0/d3-tip.min.js"></script>
+
+<script>
+
+
+
+/* Canvas dimension */
+var width = 1000,
+    height = 1000;
+
+/* D3 Force Layout */
+var force = d3.layout.force()
+    .charge(-500)
+    .linkDistance(function(d) {return 240} )
+    .size([width, height]);
+
+/* Add canvas */
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+svg.append("svg:defs").selectAll("marker")
+    .data(["end"])      // Different link/path types can be defined here
+  .enter().append("svg:marker")    // This section adds in the arrows
+    .attr("id", String)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 15) // 15
+    .attr("refY", -1.5) // -1.5
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+  .append("svg:path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+{% if network %}
+var find = '&#34;';
+var re = new RegExp(find, 'g');
+
+dummy = '{{network}}'.replace(re, '"');
+
+// console.log(dummy)
+/* Graph from json */
+// var callback = function (error, graph) {
+// var netstring = JSON.stringify({{network}})
+// console.log(netstring)
+var jsonObject = JSON.parse(dummy)
+var graph = jsonObject
+
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+var tip = d3.tip()
+          .attr('class', 'd3-tip')
+          .offset([-10, 0])
+          .html(function(d) {            
+            
+            return "<strong></strong> <span style='color:red'>" + d['occupation'] + "</span>"
+            
+        } )
+          
+
+  /* Add links from graph */
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+      .enter().append("line")
+      // .attr("class", "link")
+      .style("stroke-width", function(d) { if(d.value>0.9) {return Math.sqrt(d.value)*2/3} else {return Math.sqrt(d.value)*1/3}; })
+      .attr("class", function(d) {
+          return "link source-" + d.source.index + " target-" + d.target.index;
+      })
+      .attr("marker-end", "url(#end)");
+
+svg.call(tip);
+
+/* Create the node to its neighbors dictionary */
+var node2neighbors = {};
+var node_count = graph.nodes.length
+for (var i =0; i < node_count; i++){
+    var node_id = graph.nodes[i].index;
+    node2neighbors[node_id] = graph.links.filter(function(d){
+            return d.source.index == node_id || d.target.index == node_id;
+        }).map(function(d){
+            return d.source.index == node_id ? d.target.index : d.source.index;
+        });
+}
+
+var color = d3.scale.category10();
+
+  /* Add nodes to graph */
+  var gnodes = svg.selectAll('.node')
+      .data(graph.nodes)
+      .enter()
+      .append('g')
+      .classed('gnode', true);
+
+  var color = d3.scale.ordinal()
+    .domain([0, graph.nodes.length])
+    .range(["#015eff", "#0cc402", "#fc0a18", "#aea7a5", "#ff15ae", "#d99f07", "#11a5fe", "#037e43", "#ba4455", "#d10aff", "#9354a6", "#7b6d2b", "#08bbbb", "#95b42d", "#b54e04", "#ee74ff", "#2d7593", "#e19772", "#fa7fbe", "#fe035b", "#aea0db", "#905e76", "#92b27a", "#03c262", "#878aff", "#4a7662", "#ff6757", "#fe8504", "#9340e1", "#2a8602", "#07b6e5", "#d21170", "#526ab3", "#ff08e2", "#bb2ea7", "#e4919f", "#09bf91", "#90624c", "#bba94a", "#a26c05", "#5c7605", "#df89e7", "#b0487c", "#ee9345", "#70b458", "#b19b71", "#6b6d74", "#ec5206", "#85a7c7", "#ff678c", "#b55b3e", "#8054cc", "#7eb0a0", "#c480b3", "#d9102d", "#5a783f", "#fe66d2"]);
+
+  /* Node behavior */
+  var node = gnodes.append("circle")
+      .attr("class", function(d) {
+          return "node-" + d.index;
+      })
+      .attr("r", function(d){
+        //return d['GOALS']*0.2;
+        if(d['rank']>0){
+            return d['rank']*100 + 4;
+        }
+        else{
+            return 4;
+        }
+      })
+      .style("fill", function(d){ if(d['center']==d['name']) {return "red"} else {return color(d['group'])}; })
+      .style("visibility", function(d) {
+                return d.group == 1 ? "hidden" : "visible";
+              })
+      .text(function(d){ return d.name;})
+      .call(force.drag)
+      .on('mouseover', function (d) 
+        {  
+           svg.selectAll("line.link.target-" + d.index).classed("target", true).style("stroke", '#F00');  // node is target -> red
+           svg.selectAll("line.link.source-" + d.index).classed("source", true).style("stroke", '#00F')   // node is source -> blue
+           console.log(d.occupation)
+           tip.show(d); // need to pass d to tip.show
+
+           // Determine if current node's neighbors and their links are visible
+            var active   = d.active ? false : true // toggle whether node is active
+            , newOpacity = active ? 0.25 : 1;
+
+          // Extract node's name and the names of its neighbors
+            var ind     = d.index
+            , neighbors  = node2neighbors[ind];
+       
+            svg.selectAll("line.link").filter(function(d) {
+                return d.source.index!=ind && d.target.index!=ind
+              })
+              .style("opacity", 0.25);
+
+            // Update whether or not the node is active
+            d.active = active;
+
+            var neighbors  = node2neighbors[ind];
+
+            for(var i=0; i < node_count; ++i){ // do not in neighbors, hide nodes
+              if(neighbors.indexOf(i) < 0 && ind!=i){ 
+                svg.selectAll("circle.node-" + i).style("opacity", 0.25);
+                svg.selectAll("text.label-" + i).style("opacity", 0.25);
+              }
+            }   
+
+            d3.select(this).transition()        
+              .ease("elastic")
+              .duration("500")
+              .attr("r", 20)
+              .style("opacity", 0.7);
+           
+        })
+      .on('mouseout', function (d) 
+        {  svg.selectAll("line.link.target-" + d.index).classed("target", false).style("stroke", "#CCC");
+           svg.selectAll("line.link.source-" + d.index).classed("source", false).style("stroke", "#CCC");
+           tip.hide(d); // need to pass d to tip.hide
+
+           d3.select(this).transition()        
+            .ease("elastic")
+            .duration("500")
+            .attr("r", function(d){ 
+                    if(d['rank']>0){
+                        return d['rank']*100 + 4;
+                    }
+                    else{
+                        return 4;
+                    }
+            })
+            .style("opacity", 1);
+
+
+            var ind     = d.index
+            , neighbors  = node2neighbors[ind];
+
+  
+            svg.selectAll("line.link").filter(function(d) {
+                return d.source.index!=ind && d.target.index!=ind
+              })
+              .style("opacity", 1);
+
+            var neighbors  = node2neighbors[ind];
+
+            for(var i=0; i < node_count; ++i){ // do not in neighbors, hide nodes
+              if(neighbors.indexOf(i) < 0 && ind!=i){ 
+                svg.selectAll("circle.node-" + i).style("opacity", 1);
+                svg.selectAll("text.label-" + i).style("opacity", 1);
+              }
+            }   
+
+        })
+      .on('click', function(d, i){
+          d.fixed = !d.fixed // do not use global, use itself, object thinking
+          var sel = d3.select(this)
+          if(d.fixed)
+            sel.style('fill', function(d){ return color(d['center']); });  // 'blue'   
+          else
+            sel.style('fill', function(d){ return color(d['center']); });       
+
+      });
+  
+  
+  /* Node Tag */    
+  node.append("title")
+      .text(function(d) { return d['center']; });
+  var labels = gnodes.append("text")
+      .text(function(d) {return d['occupation']})
+      .style("font-size", '14px') 
+      .attr("class", function(d) {
+          return "label-" + d.index;
+      })
+
+
+//Update stuff for animation:
+//   This takes the physics simulation for the force directed graph and
+//   sets the location of the nodes and edges to the new positions
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    gnodes.attr("transform", function(d) { 
+    return 'translate(' + [d.x, d.y] + ')';}); 
+
+  });
+
+// }); // end of d3.json
+
+{% endif %}
+
+
+
+  // {% if mux %}
+  //       d3.json("{{network}}", callback);
+  //     // d3.json("/gdata?mux={{mux}}&muy={{muy}}&network={{network}}", callback);
+  // {% endif %}
+
+</script>
